@@ -40,34 +40,115 @@ class PopulateDatabaseCommand extends Command
         $db->getConnection()->statement("TRUNCATE `companies`");
         $db->getConnection()->statement("SET FOREIGN_KEY_CHECKS=1");
 
+        // Créer 2-4 sociétés
+        $companies = [
+            [
+                'name' => 'TechInnovate Solutions',
+                'phone' => '0601020304',
+                'email' => 'contact@techinnovate.com',
+                'website' => 'https://techinnovate.com',
+                'image' => 'https://images.unsplash.com/photo-1497366216548-37526070297c',
+            ],
+            [
+                'name' => 'DataFlow Systems',
+                'phone' => '0602030405',
+                'email' => 'info@dataflow.com',
+                'website' => 'https://dataflow.com',
+                'image' => 'https://images.unsplash.com/photo-1497366811353-6870744d04b2',
+            ],
+            [
+                'name' => 'CloudNine Technologies',
+                'phone' => '0603040506',
+                'email' => 'hello@cloudnine.tech',
+                'website' => 'https://cloudnine.tech',
+                'image' => 'https://images.unsplash.com/photo-1497366754035-5f381699c2c5',
+            ],
+        ];
 
-        $db->getConnection()->statement("INSERT INTO `companies` VALUES
-    (1,'Stack Exchange','0601010101','stack@exchange.com','https://stackexchange.com/','https://upload.wikimedia.org/wikipedia/commons/thumb/5/5b/Verisure_information_technology_department_at_Ch%C3%A2tenay-Malabry_-_2019-01-10.jpg/1920px-Verisure_information_technology_department_at_Ch%C3%A2tenay-Malabry_-_2019-01-10.jpg', now(), now(), null),
-    (2,'Google','0602020202','contact@google.com','https://www.google.com','https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Google_office_%284135991953%29.jpg/800px-Google_office_%284135991953%29.jpg?20190722090506',now(), now(), null)
-        ");
+        $companyIds = [];
+        foreach (array_slice($companies, 0, rand(2, 3)) as $company) {
+            $db->table('companies')->insert([
+                'name' => $company['name'],
+                'phone' => $company['phone'],
+                'email' => $company['email'],
+                'website' => $company['website'],
+                'image' => $company['image'],
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+            $companyIds[] = $db->getPdo()->lastInsertId();
+        }
 
-        $db->getConnection()->statement("INSERT INTO `offices` VALUES
-    (1,'Bureau de Nancy','1 rue Stanistlas','Nancy','54000','France','nancy@stackexchange.com',NULL,1, now(), now()),
-    (2,'Burea de Vandoeuvre','46 avenue Jeanne d\'Arc','Vandoeuvre','54500','France',NULL,NULL,1, now(), now()),
-    (3,'Siege sociale','2 rue de la primatiale','Paris','75000','France',NULL,NULL,2, now(), now()),
-    (4,'Bureau Berlinois','192 avenue central','Berlin','12277','Allemagne',NULL,NULL,2, now(), now())
-        ");
+        // Créer 2-3 bureaux par société
+        $cities = [
+            ['name' => 'Paris', 'zip' => '75000'],
+            ['name' => 'Lyon', 'zip' => '69000'],
+            ['name' => 'Marseille', 'zip' => '13000'],
+            ['name' => 'Bordeaux', 'zip' => '33000'],
+            ['name' => 'Lille', 'zip' => '59000'],
+            ['name' => 'Strasbourg', 'zip' => '67000'],
+        ];
 
-        $db->getConnection()->statement("INSERT INTO `employees` VALUES
-     (1,'Camille','La Chenille',1,'camille.la@chenille.com',NULL,'Ingénieur', now(), now()),
-     (2,'Albert','Mudhat',2,'albert.mudhat@aqume.net',NULL,'Superviseur', now(), now()),
-     (3,'Sylvie','Tesse',3,'sylive.tesse@factice.local',NULL,'PDG', now(), now()),
-     (4,'John','Doe',4,'john.doe@generique.org',NULL,'Testeur', now(), now()),
-     (5,'Jean','Bon',1,'jean@test.com',NULL,'Developpeur', now(), now()),
-     (6,'Anais','Dufour',2,'anais@aqume.net',NULL,'DBA', now(), now()),
-     (7,'Sylvain','Poirson',3,'sylvain@factice.local',NULL,'Administrateur réseau', now(), now()),
-     (8,'Telma','Thiriet',4,'telma@generique.org',NULL,'Juriste', now(), now())
-        ");
+        $officeIds = [];
+        foreach ($companyIds as $companyId) {
+            $numOffices = rand(2, 3);
+            $cityKeys = array_rand($cities, $numOffices);
+            if (!is_array($cityKeys)) {
+                $cityKeys = [$cityKeys];
+            }
 
-        $db->getConnection()->statement("update companies set head_office_id = 1 where id = 1;");
-        $db->getConnection()->statement("update companies set head_office_id = 3 where id = 2;");
+            foreach ($cityKeys as $cityKey) {
+                $city = $cities[$cityKey];
+                $db->table('offices')->insert([
+                    'name' => "Bureau de {$city['name']}",
+                    'address' => rand(1, 100) . " rue " . ['Principale', 'du Commerce', 'de la République', 'Victor Hugo'][rand(0, 3)],
+                    'city' => $city['name'],
+                    'zip_code' => $city['zip'],
+                    'country' => 'France',
+                    'email' => "bureau.{$city['name']}@" . explode('@', $companies[$companyId-1]['email'])[1],
+                    'company_id' => $companyId,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+                $officeIds[$companyId][] = $db->getPdo()->lastInsertId();
+            }
 
-        $output->writeln('Database created successfully!');
+            // Définir le siège social
+            $headOfficeId = $officeIds[$companyId][0];
+            $db->table('companies')
+                ->where('id', $companyId)
+                ->update(['head_office_id' => $headOfficeId]);
+        }
+
+        // Créer une dizaine d'employés par société
+        $firstNames = ['Jean', 'Marie', 'Pierre', 'Sophie', 'Thomas', 'Julie', 'Nicolas', 'Emma', 'Lucas', 'Léa'];
+        $lastNames = ['Martin', 'Bernard', 'Dubois', 'Thomas', 'Robert', 'Richard', 'Petit', 'Durand', 'Leroy', 'Moreau'];
+        $positions = ['Développeur', 'Chef de projet', 'Designer', 'DevOps', 'Product Owner', 'Scrum Master', 'Architecte', 'DBA', 'QA Engineer', 'UX Designer'];
+
+        foreach ($companyIds as $companyId) {
+            $numEmployees = rand(8, 12);
+            $companyOffices = $officeIds[$companyId];
+
+            for ($i = 0; $i < $numEmployees; $i++) {
+                $firstName = $firstNames[array_rand($firstNames)];
+                $lastName = $lastNames[array_rand($lastNames)];
+                $position = $positions[array_rand($positions)];
+                $officeId = $companyOffices[array_rand($companyOffices)];
+                $email = strtolower($firstName . '.' . $lastName . '@' . explode('@', $companies[$companyId-1]['email'])[1]);
+
+                $db->table('employees')->insert([
+                    'first_name' => $firstName,
+                    'last_name' => $lastName,
+                    'office_id' => $officeId,
+                    'email' => $email,
+                    'position' => $position,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+        }
+
+        $output->writeln('Database populated successfully!');
         return 0;
     }
 }
