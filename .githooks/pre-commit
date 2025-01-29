@@ -1,0 +1,30 @@
+#!/bin/sh
+
+# Vérifier les fichiers PHP
+echo "🔍 Vérification du code PHP avec PHPCS..."
+composer phpcs
+
+if [ $? -ne 0 ]; then
+    echo "❌ PHPCS a détecté des erreurs. Veuillez les corriger avant de commiter."
+    exit 1
+fi
+
+echo "🔍 Analyse du code PHP avec PHPStan..."
+composer phpstan
+
+if [ $? -ne 0 ]; then
+    echo "❌ PHPStan a détecté des erreurs. Veuillez les corriger avant de commiter."
+    exit 1
+fi
+
+# Vérifier les fichiers JavaScript
+echo "🔍 Vérification du code JavaScript avec ESLint..."
+npm run lint:js
+
+if [ $? -ne 0 ]; then
+    echo "❌ ESLint a détecté des erreurs. Veuillez les corriger avant de commiter."
+    exit 1
+fi
+
+echo "✅ Tous les tests sont passés !"
+exit 0
