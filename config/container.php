@@ -6,6 +6,7 @@ use Slim\Middleware\ErrorMiddleware;
 use Psr\Container\ContainerInterface;
 use Slim\Views\Twig;
 use Slim\Views\TwigMiddleware;
+use App\Twig\ViteAssetExtension;
 
 return [
     'settings' => function () {
@@ -45,6 +46,10 @@ return [
         $twig = Twig::create($viewPath, ['cache' => false]);
 
         $twig->addExtension(new \App\Twig\MyExtension());
+        $twig->addExtension(new ViteAssetExtension(
+            $container->get('settings')['app']['env'] ?? 'prod'
+        ));
+        
         return $twig;
     }
 ];
